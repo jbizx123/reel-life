@@ -41,7 +41,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
     }
   }
 }
