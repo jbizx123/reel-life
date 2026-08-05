@@ -9,3 +9,6 @@ node_modules/
 # Ignore build artifacts
 *.bundle.js
 *.bundle.js.map
+
+# Ignore supabase integration (uses packages resolved at runtime)
+app/integrations/supabase/
