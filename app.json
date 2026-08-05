@@ -4,10 +4,10 @@
     "slug": "lifecut",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/app-icon-rib.png",
+    "icon": "./assets/images/Cinematic Logo with Film Strips and Gradient.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/app-icon-rib.png",
+      "image": "./assets/images/Cinematic Logo with Film Strips and Gradient.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
@@ -20,7 +20,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/app-icon-rib.png",
+        "foregroundImage": "./assets/images/Cinematic Logo with Film Strips and Gradient.png",
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.placeholder.app"
