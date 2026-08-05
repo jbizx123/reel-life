@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.placeholder.app",
+      "bundleIdentifier": "com.jayden.reellife.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -23,7 +23,7 @@
         "foregroundImage": "./assets/images/Cinematic Logo with Film Strips and Gradient.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.placeholder.app"
+      "package": "com.jayden.reellife.app"
     },
     "web": {
       "favicon": "./assets/images/newly.png",
@@ -42,6 +42,9 @@
     },
     "extra": {
       "router": {},
+      "eas": {
+        "projectId": "8719f843-20bd-44e9-b026-be381f115623"
+      }
     }
   }
 }
