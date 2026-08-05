@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "LifeCut",
-    "slug": "lifecut",
+    "name": "Reel Life",
+    "slug": "reel-life",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/Cinematic Logo with Film Strips and Gradient.png",
@@ -36,7 +36,7 @@
       "expo-secure-store",
       "expo-video"
     ],
-    "scheme": "lifecut",
+    "scheme": "reellife",
     "experiments": {
       "typedRoutes": true
     },
