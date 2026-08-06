@@ -37,7 +37,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-    const inAuthGroup = segments[0] === "auth";
+    const inAuthGroup = segments[0] === "auth" || segments[0] === "+not-found";
     if (!user && !inAuthGroup) {
       console.log("[AuthGuard] No user, redirecting to /auth");
       router.replace("/auth");

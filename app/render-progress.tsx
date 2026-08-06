@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Animated,
-  ScrollView,
   Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -14,6 +13,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { db } from '@/utils/supabaseDb';
 import { COLORS } from '@/constants/Colors';
 import type { RenderJob, Photo } from '@/types';
+
+const SUPABASE_STORAGE_URL = 'https://jiqxzqxpannhxazlodbr.supabase.co/storage/v1/object/public/photos';
 
 const STATUS_MESSAGES = [
   'Writing your script...',
@@ -26,9 +27,6 @@ const STATUS_MESSAGES = [
 function CircularProgress({ progress }: { progress: number }) {
   const size = 180;
   const strokeWidth = 8;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   const animatedProgress = useRef(new Animated.Value(0)).current;
 
@@ -80,7 +78,10 @@ function CircularProgress({ progress }: { progress: number }) {
 export default function RenderProgressScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { project_id } = useLocalSearchParams<{ project_id: string }>();
+  const { project_id, type: typeParam } = useLocalSearchParams<{ project_id: string; type?: string }>();
+
+  // Default to free_trailer if no type param provided
+  const renderType = typeParam ?? 'free_trailer';
 
   const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -140,12 +141,12 @@ export default function RenderProgressScreen() {
 
     const poll = async () => {
       try {
-        console.log('[RenderProgress] Polling render job for project', project_id);
+        console.log('[RenderProgress] Polling render job for project', project_id, 'type', renderType);
         const { data, error: dbError } = await db
           .from('render_jobs')
           .select('*')
           .eq('project_id', project_id)
-          .eq('type', 'free_trailer')
+          .eq('type', renderType)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -160,8 +161,13 @@ export default function RenderProgressScreen() {
           setRenderJob(job);
 
           if (job.status === 'completed' && job.progress >= 100) {
-            console.log('[RenderProgress] Render complete, navigating to trailer');
-            router.replace({ pathname: '/trailer', params: { project_id } });
+            if (renderType === 'poster') {
+              console.log('[RenderProgress] Poster render complete, navigating to poster');
+              router.replace({ pathname: '/poster', params: { project_id } });
+            } else {
+              console.log('[RenderProgress] Render complete, navigating to trailer');
+              router.replace({ pathname: '/trailer', params: { project_id } });
+            }
           } else if (job.status === 'failed') {
             setError('Rendering failed. ' + (job.error_message ?? 'Please try again.'));
           }
@@ -174,10 +180,15 @@ export default function RenderProgressScreen() {
     poll();
     const interval = setInterval(poll, 3000);
     return () => clearInterval(interval);
-  }, [project_id, router]);
+  }, [project_id, renderType, router]);
 
   const progress = renderJob?.progress ?? 0;
   const currentMessage = STATUS_MESSAGES[messageIndex];
+
+  const headingText = renderType === 'poster' ? 'Creating Your Poster' : 'Creating Your Trailer';
+  const subheadingText = renderType === 'poster'
+    ? 'Designing your cinematic movie poster'
+    : 'Sit back while we craft your story';
 
   return (
     <View style={styles.root}>
@@ -189,8 +200,8 @@ export default function RenderProgressScreen() {
 
       <View style={[styles.content, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}>
         {/* Header */}
-        <Text style={styles.heading}>Creating Your Trailer</Text>
-        <Text style={styles.subheading}>Sit back while we craft your story</Text>
+        <Text style={styles.heading}>{headingText}</Text>
+        <Text style={styles.subheading}>{subheadingText}</Text>
 
         {/* Circular progress */}
         <View style={styles.progressContainer}>
@@ -215,11 +226,24 @@ export default function RenderProgressScreen() {
                 { transform: [{ translateX: filmStripAnim }] },
               ]}
             >
-              {[...photos, ...photos, ...photos].map((photo, index) => (
-                <View key={`${photo.id}-${index}`} style={styles.filmFrame}>
-                  <View style={styles.filmFrameInner} />
-                </View>
-              ))}
+              {[...photos, ...photos, ...photos].map((photo, index) => {
+                const photoUrl = photo.storage_key
+                  ? `${SUPABASE_STORAGE_URL}/${photo.storage_key}`
+                  : null;
+                return (
+                  <View key={`${photo.id}-${index}`} style={styles.filmFrame}>
+                    {photoUrl ? (
+                      <Image
+                        source={{ uri: photoUrl }}
+                        style={styles.filmFrameImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.filmFrameInner} />
+                    )}
+                  </View>
+                );
+              })}
             </Animated.View>
             <View style={styles.filmStripPerf} />
           </View>
@@ -311,6 +335,11 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  filmFrameImage: {
+    width: '100%',
+    height: '100%',
   },
   filmFrameInner: {
     width: 52,

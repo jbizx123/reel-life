@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import Svg, { Path, G, Circle, Rect } from 'react-native-svg';
 import { supabase } from '@/app/integrations/supabase/client';
 import { COLORS } from '@/constants/Colors';
@@ -75,6 +76,35 @@ export default function AuthScreen() {
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+
+  // Listen for deep link callbacks from OAuth providers
+  useEffect(() => {
+    const handleUrl = async ({ url }: { url: string }) => {
+      console.log('[Auth] Deep link received', url);
+      if (url.includes('code=') || url.includes('access_token=')) {
+        try {
+          const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(url);
+          if (sessionError) {
+            console.log('[Auth] exchangeCodeForSession error', sessionError.message);
+          } else {
+            console.log('[Auth] OAuth session established', data.session?.user?.id);
+            router.replace('/(tabs)/(home)');
+          }
+        } catch (e) {
+          console.log('[Auth] exchangeCodeForSession exception', e);
+        }
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleUrl);
+
+    // Handle the case where the app was opened via a deep link
+    Linking.getInitialURL().then(url => {
+      if (url) handleUrl({ url });
+    });
+
+    return () => subscription.remove();
+  }, [router]);
 
   const handleSignIn = async () => {
     console.log('[Auth] Sign in button pressed', { email });
@@ -140,7 +170,12 @@ export default function AuthScreen() {
   const handleAppleSignIn = async () => {
     console.log('[Auth] Apple sign in pressed');
     try {
-      const { error: authError } = await supabase.auth.signInWithOAuth({ provider: 'apple' });
+      const redirectTo = Linking.createURL('auth/callback');
+      console.log('[Auth] Apple OAuth redirect URL', redirectTo);
+      const { error: authError } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: { redirectTo },
+      });
       if (authError) {
         console.log('[Auth] Apple sign in error', authError.message);
         setError(authError.message);
@@ -154,7 +189,12 @@ export default function AuthScreen() {
   const handleGoogleSignIn = async () => {
     console.log('[Auth] Google sign in pressed');
     try {
-      const { error: authError } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+      const redirectTo = Linking.createURL('auth/callback');
+      console.log('[Auth] Google OAuth redirect URL', redirectTo);
+      const { error: authError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
       if (authError) {
         console.log('[Auth] Google sign in error', authError.message);
         setError(authError.message);

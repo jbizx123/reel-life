@@ -45,7 +45,7 @@ export default function ProfileScreen() {
     setSigningOut(true);
     try {
       await signOut();
-      router.replace('/auth');
+      // AuthGuard in _layout.tsx will redirect to /auth automatically
     } catch (e) {
       console.log('[Profile] Sign out error', e);
     } finally {

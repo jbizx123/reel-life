@@ -9,13 +9,14 @@
     "splash": {
       "image": "./assets/images/Cinematic Logo with Film Strips and Gradient.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#0D0D0D"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jayden.reellife.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryAddUsageDescription": "We need access to save your trailer and poster to your photo library."
       }
     },
     "android": {

@@ -100,6 +100,9 @@ export default function PaywallScreen() {
 
       if (result.demo_mode) {
         console.log('[Paywall] Demo mode — simulating purchase success');
+        // Determine render type from tier
+        const renderType = tier === 'poster' ? 'poster' : 'full_movie';
+
         // Demo mode: start render and navigate
         await fetch(`${SUPABASE_URL}/functions/v1/start-render`, {
           method: 'POST',
@@ -110,11 +113,15 @@ export default function PaywallScreen() {
           },
           body: JSON.stringify({
             project_id,
-            type: tier === 'poster' ? 'poster' : 'full_movie',
+            type: renderType,
           }),
         });
 
-        router.replace({ pathname: '/render-progress', params: { project_id } });
+        console.log('[Paywall] Navigating to render-progress with type', renderType);
+        router.replace({
+          pathname: '/render-progress',
+          params: { project_id, type: renderType },
+        });
       } else if (result.url) {
         console.log('[Paywall] Opening Stripe checkout URL');
         await WebBrowser.openBrowserAsync(result.url);

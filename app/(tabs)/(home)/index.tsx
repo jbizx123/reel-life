@@ -43,6 +43,33 @@ function SkeletonCard() {
   );
 }
 
+// Indeterminate shimmer progress bar for processing cards
+function IndeterminateBar() {
+  const shimmer = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, { toValue: 1, duration: 1200, useNativeDriver: false }),
+        Animated.timing(shimmer, { toValue: 0, duration: 0, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmer]);
+
+  const width = shimmer.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+
+  return (
+    <View style={styles.progressBar}>
+      <Animated.View style={[styles.progressFill, { width }]} />
+    </View>
+  );
+}
+
 // Animated list item
 function AnimatedListItem({ index, children }: { index: number; children: React.ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -86,6 +113,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Map of project_id -> render type for processing projects
+  const [renderTypes, setRenderTypes] = useState<Record<string, string>>({});
 
   const loadProjects = useCallback(async () => {
     if (!user) return;
@@ -102,8 +131,33 @@ export default function HomeScreen() {
         setError('Could not load your films. Pull to refresh.');
       } else {
         console.log('[Home] Loaded', data?.length ?? 0, 'projects');
-        setProjects((data as Project[]) ?? []);
+        const loaded = (data as Project[]) ?? [];
+        setProjects(loaded);
         setError(null);
+
+        // For processing projects, fetch their latest render job type
+        const processingIds = loaded
+          .filter(p => p.status === 'processing')
+          .map(p => p.id);
+
+        if (processingIds.length > 0) {
+          const { data: jobs } = await db
+            .from('render_jobs')
+            .select('project_id, type')
+            .in('project_id', processingIds)
+            .order('created_at', { ascending: false });
+
+          if (jobs) {
+            const typeMap: Record<string, string> = {};
+            for (const job of jobs) {
+              // Only keep the most recent job per project (already ordered desc)
+              if (!typeMap[job.project_id]) {
+                typeMap[job.project_id] = job.type;
+              }
+            }
+            setRenderTypes(typeMap);
+          }
+        }
       }
     } catch (e) {
       console.log('[Home] Exception loading projects', e);
@@ -134,7 +188,11 @@ export default function HomeScreen() {
     if (project.status === 'ready') {
       router.push({ pathname: '/trailer', params: { project_id: project.id } });
     } else if (project.status === 'processing') {
-      router.push({ pathname: '/render-progress', params: { project_id: project.id } });
+      const renderType = renderTypes[project.id] ?? 'free_trailer';
+      router.push({
+        pathname: '/render-progress',
+        params: { project_id: project.id, type: renderType },
+      });
     } else {
       router.push({ pathname: '/upload', params: { project_id: project.id } });
     }
@@ -148,6 +206,11 @@ export default function HomeScreen() {
   const handleNewProject = () => {
     console.log('[Home] FAB new project pressed');
     router.push('/upload');
+  };
+
+  const handleViewPoster = (project: Project) => {
+    console.log('[Home] View Poster pressed', { id: project.id });
+    router.push({ pathname: '/poster', params: { project_id: project.id } });
   };
 
   const userName = user?.user_metadata?.full_name as string | undefined;
@@ -254,15 +317,24 @@ export default function HomeScreen() {
 
                     <View style={styles.cardAction}>
                       {isReady ? (
-                        <View style={styles.watchBtn}>
-                          <Text style={styles.watchBtnText}>Watch Trailer</Text>
-                          <ChevronRight size={14} color={COLORS.primary} />
+                        <View style={styles.readyActions}>
+                          <View style={styles.watchBtn}>
+                            <Text style={styles.watchBtnText}>Watch Trailer</Text>
+                            <ChevronRight size={14} color={COLORS.primary} />
+                          </View>
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleViewPoster(project);
+                            }}
+                            style={styles.posterBtn}
+                          >
+                            <Text style={styles.posterBtnText}>View Poster</Text>
+                          </TouchableOpacity>
                         </View>
                       ) : isProcessing ? (
                         <View style={styles.processingRow}>
-                          <View style={styles.progressBar}>
-                            <View style={[styles.progressFill, { width: '60%' }]} />
-                          </View>
+                          <IndeterminateBar />
                           <Text style={styles.processingText}>Rendering...</Text>
                         </View>
                       ) : (
@@ -515,6 +587,11 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.divider,
     paddingTop: 12,
   },
+  readyActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   watchBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -524,6 +601,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+  posterBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: COLORS.accentMuted,
+  },
+  posterBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.accent,
   },
   continueBtn: {
     flexDirection: 'row',

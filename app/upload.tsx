@@ -16,12 +16,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { Upload, X, Image as ImageIcon, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/utils/supabaseDb';
+import { supabase } from '@/app/integrations/supabase/client';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { CinematicHeader } from '@/components/CinematicHeader';
-
-const SUPABASE_URL = 'https://jiqxzqxpannhxazlodbr.supabase.co';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppcXh6cXhwYW5uaHhhemxvZGJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4OTQwNTYsImV4cCI6MjEwMTQ3MDA1Nn0.SzWrwCRAttWEP30hehpzfiPpHXSHUvWXY_03X4Q8ZvM';
 
 interface SelectedPhoto {
   uri: string;
@@ -132,28 +130,21 @@ export default function UploadScreen() {
         try {
           console.log('[Upload] Getting signed URL for photo', i + 1, 'of', photos.length);
           // Get signed upload URL from edge function
-          const urlResponse = await fetch(`${SUPABASE_URL}/functions/v1/get-upload-url`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-              'apikey': ANON_KEY,
-            },
-            body: JSON.stringify({
+          const { data: urlData, error: urlError } = await supabase.functions.invoke('get-upload-url', {
+            body: {
               project_id: projectId,
               file_name: photo.fileName ?? `photo_${i}.jpg`,
               content_type: photo.mimeType ?? 'image/jpeg',
               position: i,
-            }),
+            },
           });
 
-          if (!urlResponse.ok) {
-            const errText = await urlResponse.text();
-            console.log('[Upload] get-upload-url error', urlResponse.status, errText);
-            throw new Error(`Upload URL error: ${urlResponse.status}`);
+          if (urlError) {
+            console.log('[Upload] get-upload-url error', urlError.message);
+            throw new Error(`Upload URL error: ${urlError.message}`);
           }
 
-          const { signed_url, storage_key } = await urlResponse.json();
+          const { signed_url, storage_key } = urlData as { signed_url: string; storage_key: string };
           console.log('[Upload] Got signed URL for photo', i + 1);
 
           // Upload the file

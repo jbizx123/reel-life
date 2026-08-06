@@ -13,12 +13,10 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/utils/supabaseDb';
+import { supabase } from '@/app/integrations/supabase/client';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { CinematicHeader } from '@/components/CinematicHeader';
-
-const SUPABASE_URL = 'https://jiqxzqxpannhxazlodbr.supabase.co';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppcXh6cXhwYW5uaHhhemxvZGJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4OTQwNTYsImV4cCI6MjEwMTQ3MDA1Nn0.SzWrwCRAttWEP30hehpzfiPpHXSHUvWXY_03X4Q8ZvM';
 
 type Genre = 'drama' | 'comedy' | 'action' | 'romance' | 'documentary' | 'thriller';
 
@@ -111,19 +109,11 @@ export default function InterviewScreen() {
 
       // Call generate-script edge function
       console.log('[Interview] Calling generate-script edge function');
-      const scriptResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-script`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-          'apikey': ANON_KEY,
-        },
-        body: JSON.stringify({ project_id }),
+      const { error: scriptError } = await supabase.functions.invoke('generate-script', {
+        body: { project_id },
       });
-
-      if (!scriptResponse.ok) {
-        const errText = await scriptResponse.text();
-        console.log('[Interview] generate-script error', scriptResponse.status, errText);
+      if (scriptError) {
+        console.log('[Interview] generate-script error', scriptError.message);
         // Non-fatal — continue to render
       } else {
         console.log('[Interview] Script generated successfully');
@@ -131,19 +121,11 @@ export default function InterviewScreen() {
 
       // Call start-render edge function
       console.log('[Interview] Calling start-render edge function');
-      const renderResponse = await fetch(`${SUPABASE_URL}/functions/v1/start-render`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-          'apikey': ANON_KEY,
-        },
-        body: JSON.stringify({ project_id, type: 'free_trailer' }),
+      const { error: renderError } = await supabase.functions.invoke('start-render', {
+        body: { project_id, type: 'free_trailer' },
       });
-
-      if (!renderResponse.ok) {
-        const errText = await renderResponse.text();
-        console.log('[Interview] start-render error', renderResponse.status, errText);
+      if (renderError) {
+        console.log('[Interview] start-render error', renderError.message);
         // Non-fatal — navigate to progress screen anyway
       } else {
         console.log('[Interview] Render started successfully');

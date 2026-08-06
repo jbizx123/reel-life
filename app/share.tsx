@@ -6,12 +6,14 @@ import {
   Share,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as MediaLibrary from 'expo-media-library';
-import { Copy, Download, ChevronLeft } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
+import { Copy, Download, ChevronLeft, Play } from 'lucide-react-native';
 import Svg, { Path, G, Rect, Circle } from 'react-native-svg';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
@@ -63,6 +65,17 @@ export default function ShareScreen() {
   const videoUrl = video_url ?? '';
   const shareMessage = `Watch my life trailer! ${videoUrl}`;
 
+  // Extract domain from video URL for display
+  const videoDomain = videoUrl
+    ? (() => {
+        try {
+          return new URL(videoUrl).hostname;
+        } catch {
+          return 'Video';
+        }
+      })()
+    : '';
+
   const handlePlatformShare = async (platform: string) => {
     console.log('[Share] Platform share pressed', platform);
     try {
@@ -77,9 +90,13 @@ export default function ShareScreen() {
 
   const handleCopyLink = async () => {
     console.log('[Share] Copy link pressed');
-    // Clipboard not available without expo-clipboard, use Share as fallback
+    if (!videoUrl) {
+      console.log('[Share] No video URL to copy');
+      return;
+    }
     try {
-      await Share.share({ message: videoUrl });
+      await Clipboard.setStringAsync(videoUrl);
+      console.log('[Share] Link copied to clipboard');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (e) {
@@ -159,11 +176,30 @@ export default function ShareScreen() {
       </View>
 
       <View style={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
-        {/* Thumbnail placeholder */}
+        {/* Video preview thumbnail */}
         <View style={styles.thumbnailContainer}>
-          <View style={styles.thumbnail}>
-            <Text style={styles.thumbnailText}>Your Trailer</Text>
-          </View>
+          {videoUrl ? (
+            <View style={styles.videoPreview}>
+              <Image
+                source={{ uri: videoUrl }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+              />
+              {/* Dark overlay with play icon */}
+              <View style={styles.videoOverlay}>
+                <View style={styles.playIconCircle}>
+                  <Play size={20} color="#fff" fill="#fff" />
+                </View>
+                <Text style={styles.videoDomainText} numberOfLines={1}>
+                  {videoDomain}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.thumbnail}>
+              <Text style={styles.thumbnailText}>Your Trailer</Text>
+            </View>
+          )}
         </View>
 
         <Text style={styles.sectionLabel}>SHARE TO</Text>
@@ -262,6 +298,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     fontWeight: '600',
+  },
+  videoPreview: {
+    width: 200,
+    height: 112,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  playIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoDomainText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
+    maxWidth: 160,
   },
   sectionLabel: {
     fontSize: 11,
