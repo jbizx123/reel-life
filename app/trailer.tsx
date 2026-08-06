@@ -30,9 +30,26 @@ export default function TrailerScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const videoUrl = renderJob?.output_url ?? '';
-  const player = useVideoPlayer(videoUrl || null, p => {
+  const player = useVideoPlayer(null, p => {
     p.loop = false;
   });
+
+  // Reload player source once videoUrl is available after data fetch
+  useEffect(() => {
+    if (!videoUrl) return;
+    console.log('[Trailer] Setting player source', videoUrl);
+    player.replace({ uri: videoUrl });
+    player.play();
+  }, [videoUrl, player]);
+
+  // Sync isPlaying state from player events
+  useEffect(() => {
+    const sub = player.addListener('playingChange', ({ isPlaying: playing }) => {
+      console.log('[Trailer] playingChange event, isPlaying:', playing);
+      setIsPlaying(playing);
+    });
+    return () => sub.remove();
+  }, [player]);
 
   useEffect(() => {
     if (!project_id) return;
@@ -83,7 +100,6 @@ export default function TrailerScreen() {
     } else {
       player.play();
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleShare = async () => {
