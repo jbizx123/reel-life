@@ -17,8 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 
-const SUPABASE_URL = 'https://jiqxzqxpannhxazlodbr.supabase.co';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppcXh6cXhwYW5uaHhhemxvZGJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4OTQwNTYsImV4cCI6MjEwMTQ3MDA1Nn0.SzWrwCRAttWEP30hehpzfiPpHXSHUvWXY_03X4Q8ZvM';
+
 
 type Tier = 'full_movie' | 'poster' | 'bundle';
 
@@ -79,43 +78,29 @@ export default function PaywallScreen() {
     setError(null);
 
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-          'apikey': ANON_KEY,
-        },
-        body: JSON.stringify({ project_id, tier }),
+      const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
+        body: { project_id, tier },
       });
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.log('[Paywall] create-checkout error', response.status, errText);
-        throw new Error(`Checkout error: ${response.status}`);
+      if (checkoutError) {
+        console.log('[Paywall] create-checkout error', checkoutError.message);
+        throw new Error(`Checkout error: ${checkoutError.message}`);
       }
 
-      const result = await response.json();
+      const result = checkoutData;
       console.log('[Paywall] Checkout result', result);
 
       if (result.demo_mode) {
         console.log('[Paywall] Demo mode — simulating purchase success');
-        // Determine render type from tier
         const renderType = tier === 'poster' ? 'poster' : 'full_movie';
 
-        // Demo mode: start render and navigate
-        await fetch(`${SUPABASE_URL}/functions/v1/start-render`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token}`,
-            'apikey': ANON_KEY,
-          },
-          body: JSON.stringify({
-            project_id,
-            type: renderType,
-          }),
+        const { error: renderError } = await supabase.functions.invoke('start-render', {
+          body: { project_id, type: renderType },
         });
+
+        if (renderError) {
+          console.log('[Paywall] start-render error', renderError.message);
+        }
 
         console.log('[Paywall] Navigating to render-progress with type', renderType);
         router.replace({

@@ -16,7 +16,8 @@
       "bundleIdentifier": "com.jayden.reellife.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSPhotoLibraryAddUsageDescription": "We need access to save your trailer and poster to your photo library."
+        "NSPhotoLibraryAddUsageDescription": "We need access to save your trailer and poster to your photo library.",
+        "NSUserNotificationsUsageDescription": "We'll notify you when your trailer is ready."
       }
     },
     "android": {
@@ -35,7 +36,11 @@
       "expo-router",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-video"
+      "expo-video",
+      ["expo-notifications", {
+        "icon": "./assets/images/icon.png",
+        "color": "#0D0D0D"
+      }]
     ],
     "scheme": "reellife",
     "experiments": {

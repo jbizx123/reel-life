@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Notifications from 'expo-notifications';
 import { db } from '@/utils/supabaseDb';
 import { COLORS } from '@/constants/Colors';
 import type { RenderJob, Photo } from '@/types';
@@ -87,6 +88,7 @@ export default function RenderProgressScreen() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [messageIndex, setMessageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const notifiedRef = useRef(false);
 
   const messageOpacity = useRef(new Animated.Value(1)).current;
   const filmStripAnim = useRef(new Animated.Value(0)).current;
@@ -160,7 +162,22 @@ export default function RenderProgressScreen() {
           console.log('[RenderProgress] Job status:', job.status, 'progress:', job.progress);
           setRenderJob(job);
 
-          if (job.status === 'completed' && job.progress >= 100) {
+          const isComplete =
+            (job.status === 'completed' || job.status === 'complete') &&
+            job.progress >= 100;
+
+          if (isComplete) {
+            if (!notifiedRef.current) {
+              notifiedRef.current = true;
+              console.log('[RenderProgress] Scheduling completion notification');
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title: 'Your trailer is ready! 🎬',
+                  body: 'Tap to watch your Reel Life trailer.',
+                },
+                trigger: null,
+              });
+            }
             if (renderType === 'poster') {
               console.log('[RenderProgress] Poster render complete, navigating to poster');
               router.replace({ pathname: '/poster', params: { project_id } });

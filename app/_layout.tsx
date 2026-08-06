@@ -14,6 +14,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
+import * as Notifications from "expo-notifications";
 import { WidgetProvider } from "@/contexts/WidgetContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -61,6 +62,12 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  useEffect(() => {
+    Notifications.requestPermissionsAsync().then(({ status }) => {
+      console.log('[Notifications] Permission status:', status);
+    });
+  }, []);
 
   React.useEffect(() => {
     if (
